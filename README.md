@@ -83,3 +83,5 @@ The following errors can arise when using the recommended versions for Python an
 ## How to use
 
 This module is meant to be subscribe to modules producing either `TextIU`s or `AudioIU`s. It will forward IUs containing a `language` attribute, useful for _e.g._ ASR or TTS modules. You can try out both by running `test_network.py`, and uncommenting the respective part in the main function.
+
+[Link to Video Tutorial in Google Drive](https://drive.google.com/file/d/1EOFs2QZAImt_sra9D3LY93pz7pg8ggDG/view?usp=sharing)
