@@ -2,86 +2,84 @@
 
 A Retico module for automatically detecting the input language from the previous module as text or audio, and forward it to the next module.
 
-## Contents
-
-- `language_detection.py`: Contains the `LanguageDetectionModule` class, which detects the language of a textual or audio IU and forwards it to the next module as an ISO-639-1 language code (under the `language` attribute).
-- `test_network.py`: Contains a test script that demonstrates how to use the `LanguageDetectionModule` class in a Retico network. You can uncomment the text or audio part to test either way. This requires an up-to-date version of `retico-googleasr.googleasr`, which is provided with this repository.
-
-## Installation
-
-- To automatically install this repository:
-
-  ```bash
-  pip install --upgrade pip setuptools wheel
-  pip install git+https://github.com/retico-team/retico-language-detection.git
-  ```
-
-- To install from source, you can clone the repository, install the dependencies, and test out the module by running the `test_network.py` script:
-
-  ```bash
-   git clone https://github.com/retico-team/retico-language-detection
-  ```
-
-### Troubleshooting
-
-The following errors can arise when using the recommended versions for Python and libraries:
-
-- ```plain
-
-  File ".venv/lib/python3.9/site-packages/bangla/__init__.py", line 139, in <module>
-      def get_date(passed_date=None, passed_month=None, passed_year=None, ordinal: bool | None = False):
-  TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
-  ```
-
-  - **Solution:** This error occurs because the `|` operator is not supported in Python 3.9. You can fix this by removing `bool | None` in the source code. Alternatively, you can upgrade to Python 3.10 or later, although this is not recommended at the moment due to potential compatibility issues with other Retico modules.
-
-- ```plain
-  File ".venv/lib/python3.9/site-packages/TTS/utils/io.py", line 54, in load_fsspec
-      return torch.load(f, map_location=map_location, **kwargs)
-  File ".venv/lib/python3.9/site-packages/torch/serialization.py", line 1470, in load
-      raise pickle.UnpicklingError(_get_wo_message(str(e))) from None
-  _pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, do those steps only if you trust the source of the checkpoint.
-
-  (1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.
-  ```
-
-  - **Solution:** You can fix this by adding `weights_only=False` in the source code of the module, or by downgrading to PyTorch<=2.5, although the latter solution is also not recommended at the moment due to potential compatibility issues with other Retico modules.
-
-## Setup
-
-> [!WARNING]
-> It is recommended to use **Python 3.9.x** at the moment in order to avoid any compatibility issues with the rest of the Retico modules.
-
-- If you haven't yet, create a virtual environment and activate it:
-
-  - **Linux/MacOS**:
-
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
-
-  - **Windows**:
-
-    ```powershell
-    python -m venv .venv
-    .\.venv\Scripts\Activate.ps1
-    ```
-
-    If you encounter an error when activating the virtual environment, retry the above command after running the following line:
-
-    ```powershell
-    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-    ```
-
-- Install the dependencies:
-
-  ```bash
-  python3 -m pip install -r requirements.txt
-  ```
-
-## How to use
-
-This module is meant to be subscribe to modules producing either `TextIU`s or `AudioIU`s. It will forward IUs containing a `language` attribute, useful for _e.g._ ASR or TTS modules. You can try out both by running `test_network.py`, and uncommenting the respective part in the main function.
-
 [Link to Video Tutorial in Google Drive](https://drive.google.com/file/d/1EOFs2QZAImt_sra9D3LY93pz7pg8ggDG/view?usp=sharing)
+
+## Installation and Requirements
+
+To use the language detection module you first need to install the retico-language-detection package:
+* Install retico-language-detection:
+```pip install retico-language-detection```
+
+  or, for the latest development version from GitHub:
+```pip install git+https://github.com/retico-team/retico-language-detection.git```
+
+The audio language model ([speechbrain/lang-id-voxlingua107-ecapa](https://huggingface.co/speechbrain/lang-id-voxlingua107-ecapa)) is downloaded from Hugging Face the first time the module is imported.
+
+## Modules
+
+### `LanguageDetectionModule`
+Subscribes to `TextIU` or `AudioIU` and outputs a `LanguageDetectionIU`: a copy of the input with a `language` attribute (an ISO 639-1 code, e.g. `"en"`) and a `confidence` attribute. Modules further down the network can use `language` to switch languages automatically, e.g. `GoogleASRModule` from [retico-googleasr](https://github.com/retico-team/retico-googleasr) or `MultilingualTTSModule` from [retico-multilingual-tts](https://github.com/retico-team/retico-multilingual-tts).
+
+* **Text** is classified with [Lingua](https://github.com/pemistahl/lingua-py), using the last 10 text IUs as context.
+* **Audio** is classified with SpeechBrain's VoxLingua107 model, about once per second. The language reported is the most common one over the recent predictions, to smooth out occasional misclassifications.
+
+It takes no arguments.
+
+### Example
+**Note:** The example uses `MicrophoneModule`, `SpeakerModule` and `DebugModule` from `retico_core`, `GoogleASRModule` from [retico-googleasr](https://github.com/retico-team/retico-googleasr) (`pip install retico-googleasr`) and `MultilingualTTSModule` from [retico-multilingual-tts](https://github.com/retico-team/retico-multilingual-tts) (`pip install retico-multilingual-tts`). The language of your speech is detected from the audio, so the ASR transcribes in that language; it is detected again from the transcribed text, so the TTS answers in that language.
+
+```python
+from retico_core import network
+from retico_core.audio import MicrophoneModule, SpeakerModule
+from retico_core.debug import DebugModule
+from retico_googleasr import GoogleASRModule
+from retico_multilingual_tts import MultilingualTTSModule
+from retico_language_detection import LanguageDetectionModule
+
+
+mic = MicrophoneModule(rate=16000, frame_length=0.2)
+lgr_audio = LanguageDetectionModule()
+asr = GoogleASRModule(rate=16000)
+lgr_text = LanguageDetectionModule()
+tts = MultilingualTTSModule()
+spk = SpeakerModule(rate=22050)
+debug = DebugModule()
+
+mic.subscribe(lgr_audio)
+lgr_audio.subscribe(asr)
+asr.subscribe(lgr_text)
+lgr_text.subscribe(tts)
+tts.subscribe(spk)
+
+lgr_text.subscribe(debug)
+
+network.run(mic)
+
+input("Running...\n")
+
+network.stop(mic)
+```
+
+### Example 2
+**Note:** The example detects the language of typed text, using `KeyboardModule` from [retico-keyboard](https://github.com/retico-team/retico-keyboard) (`pip install retico-keyboard`).
+
+```python
+from retico_core import network
+from retico_core.debug import DebugModule
+from retico_keyboard import KeyboardModule
+from retico_language_detection import LanguageDetectionModule
+
+
+keyboard = KeyboardModule()
+lgr = LanguageDetectionModule()
+debug = DebugModule()
+
+keyboard.subscribe(lgr)
+lgr.subscribe(debug)
+
+network.run(keyboard)
+
+input("Running...\n")
+
+network.stop(keyboard)
+```

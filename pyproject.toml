@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retico-language-detection"
+dynamic = ["version"]
+dependencies = [
+    "retico-core>=2.0.0",
+    "lingua-language-detector",
+    "speechbrain",
+    "torch",
+    "numpy",
+    "soundfile",
+]
+requires-python = ">=3.9, <4"
+authors = [
+    {name = "Émile Alexandre", email = "emilealexandre@boisestate.edu"},
+]
+description = "A Retico module to automatically detect the input language from text or audio."
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+    "retico",
+    "framework",
+    "incremental",
+    "dialogue",
+    "dialog",
+    "language detection",
+    "language identification",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+[project.urls]
+Repository = "https://github.com/retico-team/retico-language-detection"
+
+[tool.setuptools_scm]
+version_file = "retico_language_detection/version.py"
